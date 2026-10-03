@@ -1,0 +1,7 @@
+.godot/
+.runtime/
+_build/
+exports/
+evidence/
+tests/fixtures/*.json
+*.zip

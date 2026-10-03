@@ -1,0 +1,59 @@
+name: Test and deploy Cinderweave Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cinderweave-pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Download pinned official Godot 4.6.3
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/godot"
+          cd "$RUNNER_TEMP/godot"
+          curl --fail --location --retry 3 -o editor.zip 'https://github.com/godotengine/godot-builds/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip'
+          echo 'd0bc2113065e481c9c2c2b2c37daa4e8be3fe9e27f0ab9ab0b6096e9a37907f3  editor.zip' | sha256sum --check
+          unzip -q editor.zip
+          chmod +x Godot_v4.6.3-stable_linux.x86_64
+          curl --fail --location --retry 3 -o templates.tpz 'https://github.com/godotengine/godot-builds/releases/download/4.6.3-stable/Godot_v4.6.3-stable_export_templates.tpz'
+          echo '3fbe2c0e2dec9d537ab9ec97bcf8da91dcf23357fc51f67092dd068d839290a8  templates.tpz' | sha256sum --check
+          unzip -p templates.tpz templates/web_nothreads_release.zip > web_nothreads_release.zip
+          echo '1446f79dc12f60ce5d244c39fb6628ec298337ca5c4f91a16491feea72aa1bc9  web_nothreads_release.zip' | sha256sum --check
+      - name: Run clean import, regressions, and exact Web export
+        id: build
+        run: >-
+          python3 tools/build_web.py
+          --godot "$RUNNER_TEMP/godot/Godot_v4.6.3-stable_linux.x86_64"
+          --template "$RUNNER_TEMP/godot/web_nothreads_release.zip"
+          --work-parent "$RUNNER_TEMP/cinderweave-build"
+      - name: Package verified runtime only
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa
+        with:
+          path: ${{ steps.build.outputs.web }}
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b
+      - name: Deploy verified artifact
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e
