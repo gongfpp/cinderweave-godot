@@ -67,11 +67,13 @@ for name in ['GODOT_LICENSE.txt', 'GODOT_THIRD_PARTY.txt', 'Noto-CJK-LICENSE.txt
     shutil.copy2(repo/'third_party'/name, root/'web'/'licenses'/name)
 (root/'web'/'.nojekyll').touch()
 info = dict(baseline)
-info.update({'repository': 'gongfpp/cinderweave-godot', 'repository_commit': os.environ.get('GITHUB_SHA', 'local-uncommitted'), 'workflow_run_id': os.environ.get('GITHUB_RUN_ID'), 'workflow_run_attempt': os.environ.get('GITHUB_RUN_ATTEMPT'), 'runtime_matches_m1_candidate': True, 'html_footer_added': True})
+info.update({'repository': 'gongfpp/cinderweave-godot', 'repository_commit': os.environ.get('GITHUB_SHA', 'local-uncommitted'), 'workflow_run_id': os.environ.get('GITHUB_RUN_ID'), 'workflow_run_attempt': os.environ.get('GITHUB_RUN_ATTEMPT'), 'runtime_matches_m1_candidate': False, 'game_assets_match_m1_candidate': True, 'html_footer_added': True})
+info['exported_files'] = dict(info['exported_files'])
+info['exported_files']['index.html'] = {'sha256': sha(html), 'bytes': html.stat().st_size}
 (root/'web'/'build-info.json').write_text(json.dumps(info, ensure_ascii=False, indent=2)+'\n')
 files = sorted(p for p in (root/'web').rglob('*') if p.is_file())
 (root/'web'/'SHA256SUMS.txt').write_text(''.join(sha(p)+'  '+p.relative_to(root/'web').as_posix()+'\n' for p in files))
-result = {'web': str(root/'web'), 'engine': ENGINE_VERSION, 'runtime_files_identical': len(baseline['exported_files']), 'browser_accepted': False}
+result = {'web': str(root/'web'), 'engine': ENGINE_VERSION, 'runtime_files_identical': len(baseline['exported_files']) - 1, 'browser_accepted': False}
 print(json.dumps(result, indent=2))
 if os.environ.get('GITHUB_OUTPUT'):
     with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
