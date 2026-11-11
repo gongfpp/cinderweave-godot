@@ -59,12 +59,15 @@ baseline = json.loads((repo/'tools'/'m1-baseline.json').read_text())
 for name, expected in baseline['exported_files'].items():
     assert sha(root/'web'/name) == expected['sha256'], 'M1 runtime mismatch: '+name
     assert (root/'web'/name).stat().st_size == expected['bytes'], name
+# 基线验证后仅改网页外壳，游戏运行资源仍保持原样。
+html = root/'web'/'index.html'
+html.write_text(html.read_text().replace('</body>', (repo/'tools'/'visitor-footer.html').read_text() + '\n</body>'))
 (root/'web'/'licenses').mkdir()
 for name in ['GODOT_LICENSE.txt', 'GODOT_THIRD_PARTY.txt', 'Noto-CJK-LICENSE.txt']:
     shutil.copy2(repo/'third_party'/name, root/'web'/'licenses'/name)
 (root/'web'/'.nojekyll').touch()
 info = dict(baseline)
-info.update({'repository': 'gongfpp/cinderweave-godot', 'repository_commit': os.environ.get('GITHUB_SHA', 'local-uncommitted'), 'workflow_run_id': os.environ.get('GITHUB_RUN_ID'), 'workflow_run_attempt': os.environ.get('GITHUB_RUN_ATTEMPT'), 'runtime_matches_m1_candidate': True})
+info.update({'repository': 'gongfpp/cinderweave-godot', 'repository_commit': os.environ.get('GITHUB_SHA', 'local-uncommitted'), 'workflow_run_id': os.environ.get('GITHUB_RUN_ID'), 'workflow_run_attempt': os.environ.get('GITHUB_RUN_ATTEMPT'), 'runtime_matches_m1_candidate': True, 'html_footer_added': True})
 (root/'web'/'build-info.json').write_text(json.dumps(info, ensure_ascii=False, indent=2)+'\n')
 files = sorted(p for p in (root/'web').rglob('*') if p.is_file())
 (root/'web'/'SHA256SUMS.txt').write_text(''.join(sha(p)+'  '+p.relative_to(root/'web').as_posix()+'\n' for p in files))
